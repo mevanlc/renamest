@@ -11,6 +11,7 @@ documentation = "https://docs.rs/renamore"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 edition = "2021"
+rust-version = "1.98"
 
 [dependencies]
 libc = "0.2.177"

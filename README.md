@@ -1,80 +1,54 @@
-# Renamore
+# a Renamore fork
 
-More ways to rename files.
+This is a fork of Renamore, a Rust library for renaming files without
+overwriting an existing destination, atomically where the platform supports it.
+See the [upstream repository](https://github.com/indianakernick/renamore) for
+full documentation.
 
-## Overview
+## about this fork
 
-The Rust standard library offers [`std::fs::rename`] for renaming files.
-Sometimes, that's not enough. Consider the example of renaming a file but
-aborting the operation if something already exists at the destination path.
-That can be achieved using the Rust standard library but ensuring that the
-operation is atomic requires platform-specific APIs. Without using
-platform-specific APIs, a [TOCTTOU] bug can be introduced. This library aims
-to provide a cross-platform interface to these APIs.
+This fork keeps the upstream API and adds:
 
-[`std::fs::rename`]: https://doc.rust-lang.org/std/fs/fn.rename.html
-[TOCTTOU]: https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use
+- a direct Linux `renameat2` syscall without build-time C or linker probing;
+- corrected Apple volume-capability detection and unsupported-error handling;
+  and
+- a declared minimum supported Rust version of 1.98.
 
-## Examples
+Everything else behaves like upstream Renamore unless noted below.
 
-Renaming a file without the possibility of accidentally overwriting anything
-can be done using [`rename_exclusive`]. It should be noted that this feature
-is not supported by all combinations of operating system and file system.
-`rename_exclusive` will fail if it can't be done atomically.
+### Linux without build-time probing
 
-[`rename_exclusive`]: https://docs.rs/renamore/latest/renamore/fn.rename_exclusive.html
+On Linux, Renamore calls the kernel's `renameat2` system call through `libc`
+with `RENAME_NOREPLACE`. It does not link to glibc's `renameat2` wrapper or
+compile a musl shim, so building the crate no longer requires a C compiler or a
+build-time probe for that wrapper.
 
-```rust
-use std::io::Result;
+If the running kernel or file system does not support the operation, Renamore
+reports `std::io::ErrorKind::Unsupported`. Enabling the `always-fallback`
+feature disables the Linux atomic implementation: `rename_exclusive` reports
+`Unsupported`, while `rename_exclusive_fallback` uses its non-atomic path and
+returns `false`. The legacy `always-supported` feature is still accepted but
+has no effect.
 
-fn main() -> Result<()> {
-    renamore::rename_exclusive("old.txt", "new.txt")
-}
+### Apple volume-capability detection
+
+On macOS, iOS, watchOS, and tvOS, `rename_exclusive` uses `renamex_np` with
+`RENAME_EXCL`. Unsupported-operation errors are reported as
+`std::io::ErrorKind::Unsupported`; other errors retain their original meaning.
+
+`rename_exclusive_is_atomic(path)` resolves the path's containing volume,
+queries that volume at its mount root, rejects incomplete capability responses,
+and returns `true` only when `VOL_CAP_INT_RENAME_EXCL` is both valid and set.
+
+## building
+
+Renamore requires Rust 1.98 or newer and uses the Rust 2021 edition.
+
+```console
+cargo build
 ```
 
-Alternatively, [`rename_exclusive_fallback`] can be used. This will try to
-perform the operation atomically, and use a non-atomic fallback if that's
-not supported. The return value will indicate what happened.
+## license
 
-[`rename_exclusive_fallback`]: https://docs.rs/renamore/latest/renamore/fn.rename_exclusive_fallback.html
-
-```rust
-use std::io::Result;
-
-fn main() -> Result<()> {
-    if renamore::rename_exclusive_fallback("old.txt", "new.txt")? {
-        // `new.txt` was definitely not overwritten.
-        println!("The operation was atomic");
-    } else {
-        // `new.txt` was probably not overwritten.
-        println!("The operation was not atomic");
-    }
-
-    Ok(())
-}
-```
-
-## Platform-specific behaviour
-
-On Linux, the `renameat2` syscall is used through `libc`. The
-`always-fallback` feature can force Linux to report `Unsupported` so
-`rename_exclusive_fallback` uses its non-atomic fallback.
-
- - `always-fallback`. Assume that `renameat2` doesn't exist on Linux.
-
-## License
-
-Licensed under either of
-
- * Apache License, Version 2.0
-   ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license
-   ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
-
-## Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
-dual licensed as above, without any additional terms or conditions.
+Renamore is available under either the [Apache License 2.0](LICENSE-APACHE) or
+the [MIT license](LICENSE-MIT), at your option.

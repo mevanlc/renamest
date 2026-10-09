@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy --no-self-update
+      - uses: taiki-e/install-action@c6702eacb5b86c67cc1f5b92f3c9e322e1a687b7 # nextest
+      - run: cargo +1.98.0 fmt --check
+      - run: cargo +1.98.0 clippy --all-targets --all-features -- -D warnings
+      - run: cargo +1.98.0 nextest run
+        env:
+          RENAMORE_EXPECT_NATIVE: '1'
+      - run: cargo +1.98.0 test --doc
+      - run: cargo +1.98.0 doc --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - if: runner.os == 'Linux'
+        run: cargo +1.98.0 nextest run --features always-fallback
+        env:
+          RENAMORE_EXPECT_NATIVE: '0'
+
+  freebsd:
+    name: FreeBSD ${{ matrix.release }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release: '15.1'
+            native: '1'
+          - release: '15.0'
+            native: '0'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: vmactions/freebsd-vm@f0552d3b69211736abd97f02ff3d4674c56b73b1 # v1.5.5
+        with:
+          release: ${{ matrix.release }}
+          copyback: false
+          prepare: pkg install -y rust
+          run: |
+            export PATH="/usr/local/bin:$PATH"
+            export RENAMORE_EXPECT_NATIVE='${{ matrix.native }}'
+            cargo test -- --test-threads=1

@@ -11,7 +11,7 @@ This fork keeps the upstream API and adds:
 
 - a direct Linux `renameat2` syscall without build-time C or linker probing;
 - corrected Apple volume-capability detection and unsupported-error handling;
-  and
+- FreeBSD no-overwrite renames with runtime detection for older systems; and
 - a declared minimum supported Rust version of 1.98.
 
 Everything else behaves like upstream Renamore unless noted below.
@@ -39,6 +39,20 @@ On macOS, iOS, watchOS, and tvOS, `rename_exclusive` uses `renamex_np` with
 `rename_exclusive_is_atomic(path)` resolves the path's containing volume,
 queries that volume at its mount root, rejects incomplete capability responses,
 and returns `true` only when `VOL_CAP_INT_RENAME_EXCL` is both valid and set.
+
+### FreeBSD no-overwrite renames
+
+On FreeBSD, `rename_exclusive` dynamically resolves `renameat2` and uses
+`AT_RENAME_NOREPLACE`. Older libc or kernel versions and unsupported filesystems
+return `std::io::ErrorKind::Unsupported`; the library does not require the new
+symbol at load time. Existing destinations, including dangling symbolic links,
+are never replaced by this operation.
+
+`rename_exclusive_is_atomic(path)` checks API and kernel availability without
+changing files and recognizes UFS, ZFS, tmpfs, and msdosfs. It returns `false`
+for unknown filesystems. This is only an advisory check: the actual rename
+determines support. `rename_exclusive_fallback` retains its existing non-atomic
+fallback on unsupported systems.
 
 ## building
 

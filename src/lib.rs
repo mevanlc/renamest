@@ -1,4 +1,4 @@
-//! More ways to rename files.
+//! Cross-platform file renaming without overwriting existing destinations.
 //!
 //! ## Overview
 //!
@@ -23,7 +23,7 @@
 //! use std::io::Result;
 //!
 //! fn main() -> Result<()> {
-//!     renamore::rename_exclusive("old.txt", "new.txt")
+//!     renamest::rename_exclusive("old.txt", "new.txt")
 //! }
 //! ```
 //!
@@ -35,7 +35,7 @@
 //! use std::io::Result;
 //!
 //! fn main() -> Result<()> {
-//!     if renamore::rename_exclusive_fallback("old.txt", "new.txt")? {
+//!     if renamest::rename_exclusive_fallback("old.txt", "new.txt")? {
 //!         // `new.txt` was definitely not overwritten.
 //!         println!("The operation was atomic");
 //!     } else {
@@ -112,7 +112,7 @@ pub fn rename_exclusive<F: AsRef<Path>, T: AsRef<Path>>(from: F, to: T) -> Resul
 /// ```no_run
 /// # use std::io::Result;
 /// # fn main() -> Result<()> {
-/// if !renamore::rename_exclusive_is_atomic(".")? {
+/// if !renamest::rename_exclusive_is_atomic(".")? {
 ///     println!("Warning: atomically renaming without overwriting is not supported!");
 /// }
 /// # Ok(())
@@ -136,7 +136,7 @@ pub fn rename_exclusive_is_atomic<P: AsRef<Path>>(path: P) -> Result<bool> {
 ///
 /// ```no_run
 /// # fn main() -> std::io::Result<()> {
-/// if renamore::rename_exclusive_fallback("old.txt", "new.txt")? {
+/// if renamest::rename_exclusive_fallback("old.txt", "new.txt")? {
 ///     // `new.txt` was definitely not overwritten.
 ///     println!("The operation was atomic");
 /// } else {

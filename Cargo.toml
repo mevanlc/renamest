@@ -1,13 +1,13 @@
 [package]
-name = "renamore"
-version = "0.3.2"
-authors = ["Indiana Kernick <indiana.kernick@gmail.com>"]
-description = "More ways to rename files."
+name = "renamest"
+version = "0.1.0"
+authors = ["Mike Clark", "Indiana Kernick <indiana.kernick@gmail.com>"]
+description = "Cross-platform file renaming without overwriting existing destinations."
 categories = ["filesystem"]
 keywords = ["rename", "file"]
-homepage = "https://github.com/mevanlc/renamore"
-repository = "https://github.com/mevanlc/renamore"
-documentation = "https://docs.rs/renamore"
+homepage = "https://github.com/mevanlc/renamest"
+repository = "https://github.com/mevanlc/renamest"
+documentation = "https://docs.rs/renamest"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 edition = "2021"

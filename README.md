@@ -1,36 +1,49 @@
-# a Renamore fork
+# renamest
 
-This is a fork of Renamore, a Rust library for renaming files without
-overwriting an existing destination, atomically where the platform supports it.
-See the [upstream repository](https://github.com/indianakernick/renamore) for
-full documentation.
+A Rust library for renaming files without overwriting an existing destination,
+atomically where the platform supports it.
 
-## about this fork
+Renamest is based on [Mike Clark's Renamore fork](https://github.com/mevanlc/renamore),
+originally derived from [Renamore by Indiana Kernick](https://github.com/indianakernick/renamore).
 
-This fork keeps the upstream API and adds:
+## usage
 
-- a direct Linux `renameat2` syscall without build-time C or linker probing;
-- corrected Apple volume-capability detection and unsupported-error handling;
-  and
-- a declared minimum supported Rust version of 1.98.
+```rust,no_run
+fn main() -> std::io::Result<()> {
+    renamest::rename_exclusive("old.txt", "new.txt")
+}
+```
 
-Everything else behaves like upstream Renamore unless noted below.
+The library provides:
 
-### Linux without build-time probing
+- `rename_exclusive(from, to)`: renames atomically without overwriting an
+  existing destination, or returns `std::io::ErrorKind::Unsupported` when the
+  platform cannot perform the operation.
+- `rename_exclusive_is_atomic(path)`: checks for platform and file system
+  support. This is advisory; the rename operation can still fail.
+- `rename_exclusive_fallback(from, to)`: attempts the atomic operation, then
+  falls back to checking the destination before renaming if atomic support is
+  unavailable. Returns `true` for the atomic operation and `false` for the
+  fallback. The fallback has a race between checking and renaming and may
+  overwrite a destination created during that interval.
 
-On Linux, Renamore calls the kernel's `renameat2` system call through `libc`
+## platform support
+
+### Linux
+
+On Linux, Renamest calls the kernel's `renameat2` system call through `libc`
 with `RENAME_NOREPLACE`. It does not link to glibc's `renameat2` wrapper or
 compile a musl shim, so building the crate no longer requires a C compiler or a
 build-time probe for that wrapper.
 
-If the running kernel or file system does not support the operation, Renamore
+If the running kernel or file system does not support the operation, Renamest
 reports `std::io::ErrorKind::Unsupported`. Enabling the `always-fallback`
 feature disables the Linux atomic implementation: `rename_exclusive` reports
 `Unsupported`, while `rename_exclusive_fallback` uses its non-atomic path and
 returns `false`. The legacy `always-supported` feature is still accepted but
 has no effect.
 
-### Apple volume-capability detection
+### Apple platforms
 
 On macOS, iOS, watchOS, and tvOS, `rename_exclusive` uses `renamex_np` with
 `RENAME_EXCL`. Unsupported-operation errors are reported as
@@ -40,9 +53,18 @@ On macOS, iOS, watchOS, and tvOS, `rename_exclusive` uses `renamex_np` with
 queries that volume at its mount root, rejects incomplete capability responses,
 and returns `true` only when `VOL_CAP_INT_RENAME_EXCL` is both valid and set.
 
+### Windows and other platforms
+
+On Windows, `rename_exclusive` calls `MoveFileExW` with no flags, and
+`rename_exclusive_is_atomic` always returns `true` as an advisory result.
+
+On other platforms, `rename_exclusive` returns `Unsupported` and
+`rename_exclusive_is_atomic` returns `false`. The non-atomic fallback remains
+available.
+
 ## building
 
-Renamore requires Rust 1.98 or newer and uses the Rust 2021 edition.
+Renamest requires Rust 1.98 or newer and uses the Rust 2021 edition.
 
 ```console
 cargo build
@@ -50,5 +72,5 @@ cargo build
 
 ## license
 
-Renamore is available under either the [Apache License 2.0](LICENSE-APACHE) or
+Renamest is available under either the [Apache License 2.0](LICENSE-APACHE) or
 the [MIT license](LICENSE-MIT), at your option.

@@ -1,6 +1,6 @@
 [package]
 name = "renamest"
-version = "0.1.0"
+version = "0.0.0" # Release workflows stamp the tag version.
 authors = ["Mike Clark", "Indiana Kernick <indiana.kernick@gmail.com>"]
 description = "Cross-platform file renaming without overwriting existing destinations."
 categories = ["filesystem"]
@@ -12,6 +12,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 rust-version = "1.98"
+include = ["/src/**", "/Cargo.toml", "/Cargo.lock", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [dependencies]
 libc = "0.2.177"

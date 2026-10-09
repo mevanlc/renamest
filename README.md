@@ -8,6 +8,9 @@ originally derived from [Renamore by Indiana Kernick](https://github.com/indiana
 
 ## usage
 
+Add the library with `cargo add renamest`, or add `renamest = "0.1"` to your
+dependencies.
+
 ```rust,no_run
 fn main() -> std::io::Result<()> {
     renamest::rename_exclusive("old.txt", "new.txt")
@@ -60,7 +63,7 @@ On Windows, `rename_exclusive` calls `MoveFileExW` with no flags, and
 
 On other platforms, `rename_exclusive` returns `Unsupported` and
 `rename_exclusive_is_atomic` returns `false`. The non-atomic fallback remains
-available.
+available. This includes Android, which CI compile-checks without running it.
 
 ## building
 
@@ -69,6 +72,11 @@ Renamest requires Rust 1.98 or newer and uses the Rust 2021 edition.
 ```console
 cargo build
 ```
+
+CI tests Linux (GNU and musl), macOS, and Windows on x64 and ARM64 with default
+and all features, and compile-checks Android ARM64. See the
+[release guide](https://github.com/mevanlc/renamest/blob/main/RELEASING.md) for
+tag-driven versioning and publication.
 
 ## license
 

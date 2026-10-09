@@ -157,22 +157,18 @@ pub fn rename_exclusive_is_atomic(path: &Path) -> Result<bool> {
     //  - Support for many other filesystems was added in Linux 4.9, including
     //    ext2, minix, reiserfs, jfs, vfat, and bpf.
 
-    if kernel >= Version::new(3, 15, 0) {
-        if fs == FS_EXT4 {
-            return Ok(true);
-        }
+    if kernel >= Version::new(3, 15, 0) && fs == FS_EXT4 {
+        return Ok(true);
     }
 
-    if kernel >= Version::new(3, 17, 0) {
-        if FS_BTRFS.contains(&fs) || [FS_TMPFS, FS_CIFS].contains(&fs) {
-            return Ok(true);
-        }
+    if kernel >= Version::new(3, 17, 0)
+        && (FS_BTRFS.contains(&fs) || [FS_TMPFS, FS_CIFS].contains(&fs))
+    {
+        return Ok(true);
     }
 
-    if kernel >= Version::new(4, 0, 0) {
-        if fs == FS_XFS {
-            return Ok(true);
-        }
+    if kernel >= Version::new(4, 0, 0) && fs == FS_XFS {
+        return Ok(true);
     }
 
     if kernel >= Version::new(4, 9, 0) {

@@ -1,7 +1,24 @@
 # renamest
 
-A Rust library for renaming files without overwriting an existing destination,
-atomically where the platform supports it.
+A cross-platform Rust library for atomic no-overwrite renaming of filesystem entries.
+
+- `rename_exclusive(from, to)` atomically† renames a filesystem entry without
+  overwriting an existing destination. Returns `std::io::ErrorKind::Unsupported`
+  when the platform or filesystem cannot perform the operation.
+- `rename_exclusive_fallback(from, to)` attempts the same operation as
+  `rename_exclusive`. Only on `Unsupported`‡ does it fall back to a non-atomic,
+  best-effort attempt to rename without overwriting.
+- `rename_exclusive_is_atomic(path)` probes whether the platform and filesystem
+  support `rename_exclusive` at that path. This is advisory; the rename operation
+  can still fail.
+
+† On Windows, renamest uses `MoveFileExW` with no flags to rename without
+overwriting. However, [Microsoft's documentation](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw)
+does not guarantee that this no-overwrite operation is atomic.
+
+‡ Renamest does not support moving filesystem entries across separate
+filesystems. Neither rename function falls back to copying and deleting, which
+would not be an atomic rename.
 
 Renamest is based on [Mike Clark's Renamore fork](https://github.com/mevanlc/renamore),
 originally derived from [Renamore by Indiana Kernick](https://github.com/indianakernick/renamore).
@@ -17,18 +34,12 @@ fn main() -> std::io::Result<()> {
 }
 ```
 
-The library provides:
-
-- `rename_exclusive(from, to)`: renames atomically without overwriting an
-  existing destination, or returns `std::io::ErrorKind::Unsupported` when the
-  platform cannot perform the operation.
-- `rename_exclusive_is_atomic(path)`: checks for platform and file system
-  support. This is advisory; the rename operation can still fail.
-- `rename_exclusive_fallback(from, to)`: attempts the atomic operation, then
-  falls back to checking the destination before renaming if atomic support is
-  unavailable. Returns `true` for the atomic operation and `false` for the
-  fallback. The fallback has a race between checking and renaming and may
-  overwrite a destination created during that interval.
+On success, `rename_exclusive_fallback` returns `true` for the native operation
+and `false` for the fallback. The fallback checks the destination before calling
+`std::fs::rename`. This check and rename are not atomic together, so the fallback
+may overwrite a destination created during that interval. Errors other than
+`Unsupported`, including an existing destination detected by the native
+operation, are returned without falling back.
 
 ## platform support
 

@@ -20,8 +20,7 @@ does not guarantee that this no-overwrite operation is atomic.
 filesystems. Neither rename function falls back to copying and deleting, which
 would not be an atomic rename.
 
-Renamest is based on [Mike Clark's Renamore fork](https://github.com/mevanlc/renamore),
-originally derived from [Renamore by Indiana Kernick](https://github.com/indianakernick/renamore).
+Renamest is inspired by [Renamore by Indiana Kernick](https://github.com/indianakernick/renamore).
 
 ## usage
 

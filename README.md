@@ -32,19 +32,19 @@ The library provides:
 
 ## platform support
 
-### Linux
+### Linux and Android
 
-On Linux, Renamest calls the kernel's `renameat2` system call through `libc`
-with `RENAME_NOREPLACE`. It does not link to glibc's `renameat2` wrapper or
+On Linux and Android, Renamest calls the kernel's `renameat2` system call through
+`libc` with `RENAME_NOREPLACE`. It does not link to glibc's `renameat2` wrapper or
 compile a musl shim, so building the crate no longer requires a C compiler or a
 build-time probe for that wrapper.
 
 If the running kernel or file system does not support the operation, Renamest
 reports `std::io::ErrorKind::Unsupported`. Enabling the `always-fallback`
-feature disables the Linux atomic implementation: `rename_exclusive` reports
-`Unsupported`, while `rename_exclusive_fallback` uses its non-atomic path and
-returns `false`. The legacy `always-supported` feature is still accepted but
-has no effect.
+feature disables the Linux and Android atomic implementation:
+`rename_exclusive` reports `Unsupported`, while `rename_exclusive_fallback` uses
+its non-atomic path and returns `false`. The legacy `always-supported` feature
+is still accepted but has no effect.
 
 ### Apple platforms
 
@@ -77,7 +77,7 @@ On Windows, `rename_exclusive` calls `MoveFileExW` with no flags, and
 
 On other platforms, `rename_exclusive` returns `Unsupported` and
 `rename_exclusive_is_atomic` returns `false`. The non-atomic fallback remains
-available. This includes Android, which CI compile-checks without running it.
+available.
 
 ## building
 

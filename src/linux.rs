@@ -22,6 +22,9 @@ unsafe fn renameat2(
     }
 }
 
+// libc exposes RENAME_NOREPLACE as a signed integer on Android and an unsigned
+// integer on Linux; the syscall takes an unsigned flag on both platforms.
+#[allow(clippy::unnecessary_cast)]
 pub fn rename_exclusive(from: &Path, to: &Path) -> Result<()> {
     let from_str = CString::new(from.as_os_str().as_bytes())?;
     let to_str = CString::new(to.as_os_str().as_bytes())?;
@@ -31,7 +34,7 @@ pub fn rename_exclusive(from: &Path, to: &Path) -> Result<()> {
             from_str.as_ptr(),
             libc::AT_FDCWD,
             to_str.as_ptr(),
-            libc::RENAME_NOREPLACE,
+            libc::RENAME_NOREPLACE as libc::c_uint,
         )
     };
 
@@ -108,6 +111,8 @@ fn get_kernel_version() -> Result<Version> {
     Ok(Version::new(major, minor, patch))
 }
 
+// statfs.f_type differs in signedness and width between Linux and Android ABIs.
+#[allow(clippy::unnecessary_cast)]
 fn get_filesystem_type(path: &Path) -> Result<u64> {
     let path_str = CString::new(path.as_os_str().as_bytes())?;
     let mut buf = std::mem::MaybeUninit::<libc::statfs>::uninit();

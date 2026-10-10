@@ -21,7 +21,7 @@ libc = "0.2.190"
 tempfile = "3"
 
 [features]
-# Kept for compatibility with older releases. Linux support no longer needs
-# build-time probing.
+# Kept for compatibility with older releases. Linux and Android support no
+# longer need build-time probing.
 always-supported = []
 always-fallback = []

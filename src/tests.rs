@@ -32,7 +32,10 @@ fn native_support_matches_the_test_environment() -> Result<()> {
 }
 
 #[cfg(any(
-    all(target_os = "linux", not(feature = "always-fallback")),
+    all(
+        any(target_os = "linux", target_os = "android"),
+        not(feature = "always-fallback")
+    ),
     target_vendor = "apple",
     target_os = "windows",
     target_os = "freebsd"
@@ -260,7 +263,10 @@ fn fallback_preserves_existing_destination() -> Result<()> {
 }
 
 #[cfg(not(any(
-    all(target_os = "linux", not(feature = "always-fallback")),
+    all(
+        any(target_os = "linux", target_os = "android"),
+        not(feature = "always-fallback")
+    ),
     target_vendor = "apple",
     target_os = "windows",
     target_os = "freebsd"

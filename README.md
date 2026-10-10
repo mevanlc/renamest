@@ -56,6 +56,20 @@ On macOS, iOS, watchOS, and tvOS, `rename_exclusive` uses `renamex_np` with
 queries that volume at its mount root, rejects incomplete capability responses,
 and returns `true` only when `VOL_CAP_INT_RENAME_EXCL` is both valid and set.
 
+### FreeBSD
+
+On FreeBSD, `rename_exclusive` dynamically resolves `renameat2` and uses
+`AT_RENAME_NOREPLACE`. Older libc or kernel versions and unsupported filesystems
+return `std::io::ErrorKind::Unsupported`; the library does not require the new
+symbol at load time. Existing destinations, including dangling symbolic links,
+are never replaced by this operation.
+
+`rename_exclusive_is_atomic(path)` checks API and kernel availability without
+changing files and recognizes UFS, ZFS, tmpfs, and msdosfs. It returns `false`
+for unknown filesystems. This is only an advisory check: the actual rename
+determines support. `rename_exclusive_fallback` retains its existing non-atomic
+fallback on unsupported systems.
+
 ### Windows and other platforms
 
 On Windows, `rename_exclusive` calls `MoveFileExW` with no flags, and
@@ -73,8 +87,9 @@ Renamest requires Rust 1.98 or newer and uses the Rust 2021 edition.
 cargo build
 ```
 
-CI tests Linux (GNU and musl), macOS, and Windows on x64 and ARM64 with default
-and all features, and compile-checks Android ARM64. See the
+CI tests Linux (GNU and musl), macOS, and Windows on x64 and ARM64, plus FreeBSD
+15.0 and 15.1 on x64, with default and all features. Android ARM64 is
+compile-checked. See the
 [release guide](https://github.com/mevanlc/renamest/blob/main/RELEASING.md) for
 tag-driven versioning and publication.
 

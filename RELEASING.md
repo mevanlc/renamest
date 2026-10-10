@@ -65,8 +65,10 @@ edits the manifest and the package's own lockfile entry, checking that dependenc
 resolution stays identical. All helper commands assume the repository root.
 
 CI runs nextest and doctests on x64 and ARM64 Linux GNU, Linux musl, macOS, and
-Windows, with default and all features. Android ARM64 is compile-checked; its
-atomic operations remain unsupported. macOS uses deployment target 11.0.
+Windows, plus x64 FreeBSD 15.0 and 15.1, with default and all features. FreeBSD
+runs in VMs with the pinned Rust toolchain and checks both missing-API and native
+support. Android ARM64 is compile-checked; its atomic operations remain
+unsupported. macOS uses deployment target 11.0.
 The Rust toolchain, uv, Python, nextest, and workflow actions are pinned.
 
 Crate verification builds the packaged source, runs its tests and doctests, and

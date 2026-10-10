@@ -72,7 +72,9 @@ use std::path::Path;
 ///
 /// On Linux, this calls `renameat2` with `RENAME_NOREPLACE`. On Darwin (macOS,
 /// iOS, watchOS, tvOS), this calls `renamex_np` with `RENAME_EXCL`. On Windows,
-/// this calls `MoveFileExW` with no flags. On all other platforms, this returns
+/// this calls `MoveFileExW` with no flags. On FreeBSD, this dynamically resolves
+/// `renameat2` and uses `AT_RENAME_NOREPLACE`; older systems return
+/// [`ErrorKind::Unsupported`]. On all other platforms, this returns
 /// [`ErrorKind::Unsupported`] unconditionally.
 ///
 /// # Errors
@@ -105,7 +107,10 @@ pub fn rename_exclusive<F: AsRef<Path>, T: AsRef<Path>>(from: F, to: T) -> Resul
 /// watchOS, tvOS), this calls `getattrlist` to determine whether the containing
 /// volume lists `VOL_CAP_INT_RENAME_EXCL` as one of its capabilities. On
 /// Windows, this always returns `Ok(true)` even though that may not be
-/// technically true. On all other platforms, this always returns `Ok(false)`.
+/// technically true. On FreeBSD, this checks API and kernel availability and
+/// recognizes UFS, ZFS, tmpfs, and msdosfs using `statfs`. Unknown file systems
+/// return `Ok(false)`; this is a conservative hint, not a prerequisite for
+/// calling [`rename_exclusive`]. On all other platforms, this returns `Ok(false)`.
 ///
 /// # Examples
 ///
@@ -184,10 +189,16 @@ mod windows;
 #[cfg(target_os = "windows")]
 use windows as sys;
 
+#[cfg(target_os = "freebsd")]
+mod freebsd;
+#[cfg(target_os = "freebsd")]
+use freebsd as sys;
+
 #[cfg(not(any(
     all(target_os = "linux", not(feature = "always-fallback")),
     target_vendor = "apple",
     target_os = "windows",
+    target_os = "freebsd",
 )))]
 mod sys {
     use std::io::{Error, ErrorKind, Result};

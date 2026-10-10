@@ -106,6 +106,7 @@ jobs:
         with:
           version: 0.12.23
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        if: matrix.kind != 'freebsd'
         with:
           toolchain: ${{ needs.prepare.outputs.toolchain }}
           targets: ${{ matrix.target }}
@@ -120,10 +121,11 @@ jobs:
           target_key="${target_key//-/_}"
           echo "CARGO_TARGET_${target_key}_LINKER=musl-gcc" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        if: matrix.kind != 'freebsd'
         with:
           key: ${{ matrix.target }}
       - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2
-        if: matrix.kind != 'android'
+        if: matrix.kind != 'android' && matrix.kind != 'freebsd'
         with:
           tool: cargo-nextest@0.9.132
       - name: Stamp version
@@ -131,11 +133,16 @@ jobs:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
         run: uv run scripts/release.py stamp "$RELEASE_VERSION"
       - name: Test library on the target architecture
-        if: matrix.kind != 'android'
+        if: matrix.kind != 'android' && matrix.kind != 'freebsd'
         env:
           TARGET: ${{ matrix.target }}
+          TARGET_KIND: ${{ matrix.kind }}
         run: |
+          export RENAMEST_EXPECT_NATIVE=1
           cargo nextest run --locked --all-targets --target "$TARGET"
+          if [ "$TARGET_KIND" = linux ]; then
+            export RENAMEST_EXPECT_NATIVE=0
+          fi
           cargo nextest run --locked --all-targets --all-features --target "$TARGET"
           cargo test --doc --locked --target "$TARGET"
           cargo test --doc --locked --all-features --target "$TARGET"
@@ -147,6 +154,31 @@ jobs:
         run: |
           cargo check --locked --all-targets --target "$TARGET"
           cargo check --locked --all-targets --all-features --target "$TARGET"
+      - name: Test FreeBSD ${{ matrix.release }} in a VM
+        if: matrix.kind == 'freebsd'
+        uses: vmactions/freebsd-vm@f0552d3b69211736abd97f02ff3d4674c56b73b1 # v1.5.5
+        with:
+          release: ${{ matrix.release }}
+          copyback: false
+          prepare: |
+            set -eu
+            fetch -o /tmp/rustup-init https://static.rust-lang.org/rustup/dist/x86_64-unknown-freebsd/rustup-init
+            chmod +x /tmp/rustup-init
+            /tmp/rustup-init -y --profile minimal --default-toolchain '${{ needs.prepare.outputs.toolchain }}' --component clippy --no-modify-path
+            fetch -o /tmp/nextest.tar.gz https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.132/cargo-nextest-0.9.132-x86_64-unknown-freebsd.tar.gz
+            test "$(sha256 -q /tmp/nextest.tar.gz)" = 64c776fe02a2de1f4eadc0bfc3817568f77521acd4de3c270699629d828d5daa
+            tar -xzf /tmp/nextest.tar.gz -C "$HOME/.cargo/bin" cargo-nextest
+          run: |
+            set -eu
+            export PATH="$HOME/.cargo/bin:$PATH"
+            export RENAMEST_EXPECT_NATIVE='${{ matrix.native }}'
+            cargo clippy --locked --all-targets -- -D warnings
+            cargo clippy --locked --all-targets --all-features -- -D warnings
+            cargo nextest run --locked --all-targets
+            cargo nextest run --locked --all-targets --all-features
+            cargo test --doc --locked
+            cargo test --doc --locked --all-features
+            cargo build --release --locked --lib
 
   crate:
     needs: [prepare, quality]

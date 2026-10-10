@@ -1,11 +1,44 @@
 use std::io::{ErrorKind, Result};
+use std::path::Path;
+
+fn native_available(root: &Path) -> Result<bool> {
+    let source = root.join("probe-source");
+    let destination = root.join("probe-destination");
+    std::fs::write(&source, b"probe")?;
+    match crate::rename_exclusive(&source, &destination) {
+        Ok(()) => {
+            std::fs::remove_file(destination)?;
+            Ok(true)
+        }
+        Err(error) if error.kind() == ErrorKind::Unsupported => {
+            assert_eq!(std::fs::read(&source)?, b"probe");
+            assert!(!destination.exists());
+            std::fs::remove_file(source)?;
+            Ok(false)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+#[test]
+fn native_support_matches_the_test_environment() -> Result<()> {
+    let root = tempfile::tempdir()?;
+    let available = native_available(root.path())?;
+    if let Ok(expected) = std::env::var("RENAMEST_EXPECT_NATIVE") {
+        assert_eq!(available, expected == "1");
+        assert_eq!(crate::rename_exclusive_is_atomic(root.path())?, available);
+    }
+    Ok(())
+}
 
 #[cfg(any(
     all(target_os = "linux", not(feature = "always-fallback")),
     target_vendor = "apple",
-    target_os = "windows"
+    target_os = "windows",
+    target_os = "freebsd"
 ))]
 mod atomic {
+    use super::native_available;
     use std::io::{ErrorKind, Result};
     use std::path::{Component, Path, PathBuf};
 
@@ -45,6 +78,9 @@ mod atomic {
     #[test]
     fn rename_exclusive_abs() -> Result<()> {
         let dir = tempfile::tempdir()?;
+        if !native_available(dir.path())? {
+            return Ok(());
+        }
 
         let path_a = dir.path().join("a");
         let path_b = dir.path().join("b");
@@ -79,6 +115,9 @@ mod atomic {
     #[test]
     fn rename_exclusive_rel() -> Result<()> {
         let dir = tempfile::tempdir()?;
+        if !native_available(dir.path())? {
+            return Ok(());
+        }
         let _curr = CurrentDirectory::set(dir.path())?;
 
         let path_a = PathBuf::from("a");
@@ -126,6 +165,39 @@ mod atomic {
 
         Ok(())
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinks_are_moved_and_dangling_destinations_are_not_replaced() -> Result<()> {
+        let root = tempfile::tempdir()?;
+        if !native_available(root.path())? {
+            return Ok(());
+        }
+        let source = root.path().join("source");
+        let destination = root.path().join("destination");
+        std::os::unix::fs::symlink("missing-source-target", &source)?;
+        std::os::unix::fs::symlink("missing-destination-target", &destination)?;
+        assert!(is_exists_error(crate::rename_exclusive(
+            &source,
+            &destination
+        )));
+        assert_eq!(
+            std::fs::read_link(&source)?,
+            Path::new("missing-source-target")
+        );
+        assert_eq!(
+            std::fs::read_link(&destination)?,
+            Path::new("missing-destination-target")
+        );
+        std::fs::remove_file(&destination)?;
+        crate::rename_exclusive(&source, &destination)?;
+        assert!(std::fs::symlink_metadata(&source).is_err());
+        assert_eq!(
+            std::fs::read_link(&destination)?,
+            Path::new("missing-source-target")
+        );
+        Ok(())
+    }
 }
 
 #[test]
@@ -142,6 +214,7 @@ fn rename_exclusive_is_atomic() -> Result<()> {
 #[test]
 fn fallback_renames_files_and_directories() -> Result<()> {
     let directory = tempfile::tempdir()?;
+    let native = native_available(directory.path())?;
     let source = directory.path().join("source");
     let destination = directory.path().join("destination");
     std::fs::write(&source, "contents")?;
@@ -161,14 +234,7 @@ fn fallback_renames_files_and_directories() -> Result<()> {
         std::fs::read_to_string(moved_directory.join("child"))?,
         "child contents"
     );
-    assert_eq!(
-        atomic,
-        cfg!(any(
-            all(target_os = "linux", not(feature = "always-fallback")),
-            target_vendor = "apple",
-            target_os = "windows"
-        ))
-    );
+    assert_eq!(atomic, native);
     Ok(())
 }
 
@@ -196,7 +262,8 @@ fn fallback_preserves_existing_destination() -> Result<()> {
 #[cfg(not(any(
     all(target_os = "linux", not(feature = "always-fallback")),
     target_vendor = "apple",
-    target_os = "windows"
+    target_os = "windows",
+    target_os = "freebsd"
 )))]
 #[test]
 fn atomic_rename_is_unsupported() -> Result<()> {

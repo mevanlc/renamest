@@ -117,6 +117,19 @@ class ProjectTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unexpected artifact set"):
             release.bundle()
 
+    def test_bundle_lists_each_target_once_across_os_releases(self):
+        with mock.patch.object(
+            release,
+            "targets",
+            return_value=[
+                {"target": "x86_64-unknown-freebsd", "release": "15.1"},
+                {"target": "x86_64-unknown-freebsd", "release": "15.0"},
+            ],
+        ):
+            manifest = self.make_bundle()
+            self.assertEqual(release.verify_bundle(), manifest)
+        self.assertEqual(manifest["targets"], ["x86_64-unknown-freebsd"])
+
     def test_bundle_rejects_different_commit_and_unexpected_files(self):
         self.make_bundle()
         with (

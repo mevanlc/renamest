@@ -44,6 +44,20 @@
     "kind": "windows"
   },
   {
+    "target": "x86_64-unknown-freebsd",
+    "os": "ubuntu-24.04",
+    "kind": "freebsd",
+    "release": "15.1",
+    "native": "1"
+  },
+  {
+    "target": "x86_64-unknown-freebsd",
+    "os": "ubuntu-24.04",
+    "kind": "freebsd",
+    "release": "15.0",
+    "native": "0"
+  },
+  {
     "target": "aarch64-linux-android",
     "os": "ubuntu-24.04",
     "kind": "android"

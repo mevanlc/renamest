@@ -67,6 +67,10 @@ def targets():
     return json.loads(TARGETS_FILE.read_text())
 
 
+def target_triples():
+    return list(dict.fromkeys(entry["target"] for entry in targets()))
+
+
 def toolchain():
     return tomllib.loads(Path("rust-toolchain.toml").read_text())["toolchain"][
         "channel"
@@ -160,7 +164,7 @@ def bundle(directory=Path("dist")):
         "version": release_version,
         "commit": source_commit(),
         "toolchain": toolchain(),
-        "targets": [entry["target"] for entry in targets()],
+        "targets": target_triples(),
         "assets": {name: digest(directory / name) for name in sorted(expected)},
     }
     (directory / "release-manifest.json").write_text(
@@ -192,7 +196,7 @@ def verify_bundle(directory=Path("dist")):
         manifest["toolchain"] == toolchain(), "Artifacts used a different toolchain"
     )
     require(
-        manifest["targets"] == [entry["target"] for entry in targets()],
+        manifest["targets"] == target_triples(),
         "Wrong target matrix",
     )
     expected = expected_assets(package["name"], manifest["version"])

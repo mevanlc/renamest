@@ -1,6 +1,11 @@
 # renamest
 
-A cross-platform Rust library for atomic no-overwrite renaming of filesystem entries.
+A cross-platform Rust library for atomic† no-overwrite renaming of filesystem entries.
+
+Checking whether a destination exists before calling an ordinary rename leaves a
+race: another process can create the destination in between, and the rename may
+overwrite it. `rename_exclusive` avoids that race with native no-overwrite
+operations and reports an error when they are unsupported.
 
 - `rename_exclusive(from, to)` atomically† renames a filesystem entry without
   overwriting an existing destination. Returns `std::io::ErrorKind::Unsupported`
@@ -12,9 +17,10 @@ A cross-platform Rust library for atomic no-overwrite renaming of filesystem ent
   support `rename_exclusive` at that path. This is advisory; the rename operation
   can still fail.
 
-† On Windows, renamest uses `MoveFileExW` with no flags to rename without
-overwriting. However, [Microsoft's documentation](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw)
-does not guarantee that this no-overwrite operation is atomic.
+† On Windows, renamest uses `MoveFileExW` without replacement or copy flags.
+Simple renames are [reported to be atomic on NTFS](https://stackoverflow.com/questions/167414/is-an-atomic-file-rename-with-overwrite-possible-on-windows),
+but [Microsoft's API documentation](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw)
+does not explicitly guarantee atomicity.
 
 ‡ Renamest does not support moving filesystem entries across separate
 filesystems. Neither rename function falls back to copying and deleting, which
@@ -84,6 +90,7 @@ fallback on unsupported systems.
 
 On Windows, `rename_exclusive` calls `MoveFileExW` with no flags, and
 `rename_exclusive_is_atomic` always returns `true` as an advisory result.
+The Windows atomicity caveat (†) above applies.
 
 On other platforms, `rename_exclusive` returns `Unsupported` and
 `rename_exclusive_is_atomic` returns `false`. The non-atomic fallback remains
